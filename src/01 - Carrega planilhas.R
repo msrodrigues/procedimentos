@@ -17,6 +17,7 @@ library(lubridate)
 library(tidyverse)
 library(googlesheets4)
 library(googledrive)
+library(usethis)
 
 setwd("~/Dropbox/Coding/R/misc/procedimentos/")
 source("~/Dropbox/Coding/R/funs/msrfun.R")
