@@ -1,0 +1,209 @@
+---
+title: "Relatório Geral de Procedimentos"
+author: ""
+date: ""
+output:
+  html_document: default
+  pdf_document: default
+---
+```{r setup, include=FALSE, echo=FALSE, message=FALSE, warning=FALSE}
+library(knitr)
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r Bibliotecas, include= FALSE, echo=FALSE, message=FALSE, warning=FALSE}
+
+
+library(RColorBrewer)
+library(extrafont)
+library(scales)
+library(chron)
+library(treemap)
+library(ggthemes)
+library(ggmap)
+library(knitr)
+library(readr)
+library(readxl)
+library(xtable)
+library(kableExtra)
+library(rebus)
+library(tibble)
+library(cronR)
+library(lubridate)
+library(tidyverse)
+library(googlesheets)
+
+setwd("~/Dropbox/Coding/R/misc/procedimentos")
+
+Sys.setenv(TZ="Brazil/East")
+options(tz="Brazil/East")
+Sys.getenv("TZ")
+Sys.setlocale("LC_TIME", "pt_BR")
+```
+
+```{r Carregamento das funções , include = FALSE, echo=FALSE, message=FALSE, warning=FALSE}
+source("~/Dropbox/Coding/R/funs/msrfun.R")
+source("~/Dropbox/Coding/R/misc/procedimentos/01 - Carrega Planilhas.R")
+
+# Carrega os dados
+respostas <- readRDS(file = "~/Dropbox/Coding/R/misc/procedimentos/data/respostas.rds")
+residentes <- readRDS(file = "~/Dropbox/Coding/R/misc/procedimentos/data/residentes.rds")
+lista <- list(split(respostas, respostas$Residente))
+slices <- unique(residentes$residente)
+for (v in slices) {
+  lista[v] <- respostas %>%
+    filter( Residente == v)
+}
+
+```
+
+
+
+```{r , include = FALSE, echo=FALSE, message=FALSE, warning=FALSE}
+df_total <- respostas %>%
+  group_by(Data) %>% 
+  summarise(Total = n()) %>% 
+  mutate(Somatório = cumsum(Total))
+sum(residentes$r <=3)
+
+desvio_padrão <- sd(df_total$Total)
+```
+
+
+
+* Atualizado em: `r day(today())` de `r format(today(),"%B")` `r year(today())`
+* Quantidade de procedimentos registrados: `r nrow(respostas)`
+* Dias de moonitoramento: `r as.integer(max(respostas$Timestamp) - min(respostas$Timestamp))` dias
+* Média de procedimentos/dia: `r nrow(respostas) / (as.integer(max(respostas$Timestamp) - min(respostas$Timestamp)))`
+* Desvio padrão: `r desvio_padrão`
+* Quantidade de residentes: `r sum(residentes$r <=3)`
+* Procedimentos/residente: `r nrow(respostas) / sum(residentes$r <=3)`
+
+<br>
+
+```{r , include = TRUE, echo=FALSE, message=FALSE, warning=FALSE, fig.width = 6.5, fig.height=7}
+respostas %>%
+  ggplot(aes(nick, fill = Preceptor)) + geom_histogram(stat="count") +
+  theme(axis.text.x = element_text(angle = 0, hjust = 0.5)) + 
+  ggtitle("Quantidade de procedimentos e presença de preceptor por residente.") +
+  ylab("Quantidadede de procedimentos") + xlab("Residente") + coord_flip() + theme(legend.position = "bottom")
+
+```
+<br>
+
+```{r , include = FALSE, echo=FALSE, message=FALSE, warning=FALSE}
+freq_tipo_procedimento <- respostas %>% 
+  group_by(Procedimento) %>% 
+  summarise(Quantidade = n()) %>% 
+  arrange(desc(Quantidade))
+
+table(respostas$local)
+table(respostas$Estágio)
+```
+
+
+
+
+```{r , include = TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+as.data.frame(table(respostas$Procedimento, respostas$Preceptor)) %>% 
+  ggplot(aes(x = Var1, y = Freq, fill = Var2)) + geom_col() +
+  scale_fill_discrete(name="Preceptor") + theme(legend.position="bottom") + 
+  xlab("Tipo de procedimento") + ylab("Quantidade de procedimentos") + ggtitle("Quantidade de procedimentos realizados sob supervisão
+de preceptor", subtitle = "") + coord_flip()
+
+```
+```{r , include = FALSE, echo=FALSE, message=FALSE, warning=FALSE}
+respostas %>% 
+  group_by(r, Estágio) %>% 
+  summarise(n = n()) %>% 
+  ggplot(aes(x = r, y = n, fill = Estágio)) + geom_col() + coord_flip()
+
+```
+
+
+
+```{r , include = TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+
+# as.data.frame(table(respostas$local, respostas$Estágio)) %>% 
+#   ggplot(aes(x = Var2, y = Freq, fill = Var1)) + geom_col() +
+#   scale_fill_discrete(name="Residente") + theme(legend.position="bottom") + 
+#   xlab("Estágio onde foi realizado o procedimento") + ylab("Quantidade de Procedimentos") + ggtitle("Quantidade de procedimentos por estágio e por origem do residente", subtitle = "") + coord_flip()
+```
+
+
+
+
+```{r , include = TRUE, echo=TRUE, message=FALSE, warning=FALSE}
+table(respostas$Residente)
+table(respostas$local)
+table(respostas$Estágio)
+# table(respostas$Procedimento, respostas$Preceptor)
+
+respostas %>% 
+  group_by(Estágio,Preceptor) %>% 
+  summarise(n = n()) %>% 
+  arrange(desc(n)) %>% 
+  ggplot(aes(x = Estágio, y = n, fill = Preceptor)) + geom_col() + coord_flip()
+```
+
+
+```{r , include = FALSE, echo=FALSE, message=FALSE, warning=FALSE}
+respostas %>% 
+  group_by(Residente,Procedimento,Estágio) %>% 
+  summarise(n = n()) %>% 
+  ggplot(aes(x = Procedimento, y = n, fill = Estágio)) + geom_col() + coord_flip() + 
+  facet_wrap(~ Residente, ncol = 2) 
+
+```
+
+
+```{r , include = FALSE, echo=FALSE, message=FALSE, warning=FALSE}
+
+respostas %>%
+  group_by(Residente) %>% 
+  summarise(n = n()) %>%
+  mutate(total = sum(n), prop = n/total*100)
+
+
+
+
+  
+  
+  
+  
+  # ggplot(aes(x = Estágio, y = n, fill = Preceptor)) + geom_col() + 
+  # coord_flip()
+```
+
+```{r , include = FALSE, echo=FALSE, message=FALSE, warning=FALSE}
+respostas %>% 
+  group_by(Procedimento, `Consegui realizar o procedimento`, nick) %>% 
+  summarise(n = n()) %>% 
+  ggplot(aes(x = Procedimento, y = n, fill = `Consegui realizar o procedimento`)) + geom_col() + coord_flip() +
+  theme(legend.position = "bottom") + facet_wrap(~ nick)
+```
+
+
+
+```{r , include = FALSE, echo=FALSE, message=FALSE, warning=FALSE}
+
+respostas %>% 
+  filter(str_detect(Residente, "Nayara")) %>% 
+  group_by(Residente, Procedimento, Estágio) %>% 
+  summarise(n = n()) %>% 
+  ggplot(aes(x = Procedimento, y = n, fill = Estágio)) + geom_col() + coord_flip() +
+  theme(legend.position = "bottom")
+
+
+```
+
+
+```{r , include = FALSE, echo=FALSE, message=FALSE, warning=FALSE}
+for (res in unique(respostas$Residente)) {
+  rmarkdown::render("~/Dropobox/Coding/R/misc/procedimentos/src/03 - Multiplos reports.Rmd",
+                    output_file =  paste("report_", res, '_', Sys.Date(), ".html", sep=''),
+                    output_dir =  "~/Dropobox/Coding/R/misc/procedimentos/out")
+}
+
+```
+

@@ -1,0 +1,10 @@
+name: Publish Document
+title:
+username:
+account: rpubs
+server: rpubs.com
+hostUrl: rpubs.com
+appId: https://api.rpubs.com/api/v1/document/445747/ad12a7f8092044eda65f4dc497432c26
+bundleId: https://api.rpubs.com/api/v1/document/445747/ad12a7f8092044eda65f4dc497432c26
+url: http://rpubs.com/msrodrigues/445747
+when: 1547560682.13776

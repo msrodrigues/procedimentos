@@ -1,0 +1,85 @@
+---
+title: "Relatório Geral de Procedimentos"
+author: ""
+date: ""
+output:
+  html_document: default
+  pdf_document: default
+---
+```{r setup, include=FALSE, echo=FALSE, message=FALSE, warning=FALSE}
+library(knitr)
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r Bibliotecas, include= FALSE, echo=FALSE, message=FALSE, warning=FALSE}
+
+
+library(RColorBrewer)
+library(extrafont)
+library(scales)
+library(chron)
+library(treemap)
+library(ggthemes)
+library(ggmap)
+library(knitr)
+library(readr)
+library(readxl)
+library(xtable)
+library(kableExtra)
+library(rebus)
+library(tibble)
+library(cronR)
+library(lubridate)
+library(tidyverse)
+library(googlesheets)
+library(rmarkdown)
+
+setwd("~/Dropbox/Coding/R/misc/procedimentos")
+
+Sys.setenv(TZ="Brazil/East")
+options(tz="Brazil/East")
+Sys.getenv("TZ")
+Sys.setlocale("LC_TIME", "pt_BR")
+```
+
+```{r Carregamento das funções , include = FALSE, echo=FALSE, message=FALSE, warning=FALSE}
+source("~/Dropbox/Coding/R/funs/msrfun.R")
+# source("~/Dropbox/Coding/R/misc/procedimentos/src/01 - Carrega Planilhas.R")
+
+# Carrega os dados
+respostas <- readRDS(file = "~/Dropbox/Coding/R/misc/procedimentos/data/respostas.rds")
+residentes <- readRDS(file = "~/Dropbox/Coding/R/misc/procedimentos/data/residentes.rds")
+
+residentes$residente
+
+residentes$r <- ifelse(residentes$r == "#N/A", NA, residentes$r)
+residentes$r
+
+lista <- list(split(respostas, respostas$residente))
+slices <- residentes %>% 
+  filter(!is.na(r)) %>% 
+  select((residente)) %>% 
+  pull(residente)
+# slices <- slices$residente
+
+
+todas_respostas <- respostas
+
+# todas_respostas %>% 
+#   filter(nick == "Zaffari")
+#respostas$r
+#respostas <- respostas %>% 
+#  filter(r != "#N/A")
+
+for (v in slices) {
+  render("~/Dropbox/Coding/R/misc/procedimentos/src/reports.Rmd",
+         output_file=paste0("~/Dropbox/Coding/R/misc/procedimentos/out/", v, ".html"),
+         params=list(new_title = paste("Relatório para Dr(a).", v), nome = v, df_respostas = respostas, df_residentes = residentes))
+}
+
+```
+
+
+
+
+

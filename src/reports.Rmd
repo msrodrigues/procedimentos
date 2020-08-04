@@ -1,0 +1,376 @@
+---
+params:
+   new_title: "Residência de Medicina de Emergência"
+   nome: "Vinícius Caires Delgado"
+   df_respostas: !r respostas
+   df_residentes: !r residentes
+title: "`r params$new_title`"
+author: "Gerado por: Márcio Rodrigues"
+date: "Gerado em: `r Sys.time()`"
+output: html_document
+---
+
+
+```{r setup2, include=FALSE, echo=FALSE, message=FALSE, warning=FALSE}
+library(knitr)
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+
+
+
+```{r Bibliotecas2, include= FALSE, echo=FALSE, message=FALSE, warning=FALSE}
+library(RColorBrewer)
+library(extrafont)
+library(scales)
+library(chron)
+library(treemap)
+library(ggthemes)
+library(ggmap)
+library(knitr)
+library(readr)
+library(readxl)
+library(xtable)
+library(kableExtra)
+library(rebus)
+library(tibble)
+library(cronR)
+library(lubridate)
+library(tidyverse)
+
+setwd("~/Dropbox/Coding/R/misc/procedimentos")
+
+Sys.setenv(TZ="Brazil/East")
+options(tz="Brazil/East")
+Sys.getenv("TZ")
+Sys.setlocale("LC_TIME", "pt_BR")
+```
+
+
+
+```{r Carregamento das funções2 , include = FALSE, echo=FALSE, message=FALSE, warning=FALSE}
+source("~/Dropbox/Coding/R/funs/msrfun.R")
+
+respostas <- params$df_respostas
+residentes <- params$df_residentes
+nome <- params$nome
+
+df_nome <- respostas %>%
+#  filter(r == 1 | r == 2 | r == 3) %>%
+  filter(residente == nome)
+df_nome$residente
+
+df_ativos <- respostas %>% 
+  filter(r == 1 | r == 2 | r == 3)
+
+df_total <- respostas %>%
+  filter(r == 1 | r == 2 | r == 3) %>% 
+  group_by(data) %>% 
+  summarise(Total = n()) %>% 
+  mutate(Somatório = cumsum(Total))
+quantidade_residentes <- sum(residentes$r <=3, na.rm = TRUE)
+
+res_info <- residentes[residentes$residente == nome,]
+
+desvio_padrão <- sd(df_total$Total)
+
+
+```
+
+
+```{r , include = FALSE, echo=FALSE, message=FALSE, warning=FALSE}
+dias_na_residencia <- as.numeric(Sys.Date() -  res_info$entrada)
+dias_fim <- as.numeric(res_info$saida - Sys.Date())
+
+```
+<center>
+# HCPA e HPS
+</center>
+
+Relatório de procedimentos da residência de Medicina de Emergência do Hospital de Clínicas de Porto Alegre e do Hospital de Pronto Socorro de Porto Alegre. Registre todo o procedimento que for realizado. 
+
+Você está na residência há `r dias_na_residencia` dias (`r format(dias_na_residencia/(as.numeric(res_info$saida - res_info$entrada)) * 100, digits = 3)` % do total), faltam `r dias_fim` dias para o término.
+
+
+
+Dr(a). `r nome` é R`r max(df_nome$r)` do `r tail(df_nome$residencia,1)`  
+email: `r tail(df_nome$email,1)`  
+celular: `r tail(df_nome$celular,1)`
+<br>
+
+# Estatística descritiva:
+
+* Atualizado em: `r day(today())` de `r format(today(),"%B")` `r year(today())`
+* Quantidade de procedimentos registrados: `r nrow(respostas)`
+* Dias de monitoramento: `r as.integer(max(respostas$timestamp) - min(respostas$timestamp))` dias
+* Média de procedimentos/dia: `r nrow(respostas) / (as.integer(max(respostas$timestamp) - min(respostas$timestamp)))`
+* Desvio padrão: `r desvio_padrão`
+* Quantidade de residentes: `r sum(residentes$r <=3, na.rm = TRUE)`
+* Procedimentos/residente: `r nrow(respostas) / sum(residentes$r <=4, na.rm = TRUE)`
+
+<br>
+```{r , include = TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+respostas %>% 
+  group_by(mês = month(timestamp), ano = year(timestamp), nick, r) %>% 
+  tally() %>% 
+  ggplot(aes(x = mês, y = n , fill = r)) + geom_col() + facet_grid(~ ano) + 
+  ggtitle("Quantidade de procedimentos registrados por mês, em cada ano da residência") +
+  scale_x_continuous(breaks =  c(1:12)) + ylab("Quantidade de procedimentos")
+
+```
+
+
+
+
+```{r , include = TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+
+respostas %>% 
+  group_by(nick) %>%
+  filter(data >= (Sys.Date() - 30)) %>% 
+  summarise(n = n()) %>% 
+  mutate(etiqueta = paste(nick, "\n",n, " proc.")) %>% 
+  treemap(index = "etiqueta", 
+          vSize = "n",title = "Quantidade de Procedimentos por residente nos últimos 30 dias")
+
+mes30 <- respostas %>% 
+  filter(data >= (Sys.Date() - 30)) 
+```
+<br><br>
+
+
+```{r , include = TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+
+df_ativos %>% 
+  filter(!is.na(r)) %>% 
+  group_by(nick) %>% 
+  summarise(n = n()) %>% 
+  mutate(etiqueta = paste(nick, "\n",n, " proc.")) %>% 
+  treemap(index = "etiqueta", vSize = "n",title = "Quantidade de Procedimentos por residente")
+
+
+```
+
+<br>
+
+```{r , include = TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+
+respostas %>% 
+  filter(!is.na(r)) %>% 
+  group_by(procedimento) %>% 
+  summarise(n = n()) %>% 
+  mutate(etiqueta = paste(procedimento, "\n",n, " proc.")) %>% 
+  treemap(index = "etiqueta", vSize = "n",title = "Tipo e Quantidade de Procedimentos")
+
+
+```
+<br>
+
+```{r , include = FALSE, echo=FALSE, message=FALSE, warning=FALSE, fig.fullwidth = TRUE}
+
+respostas %>% 
+  filter(str_detect(procedimento, "Acesso")) %>% 
+  group_by(ano = factor(year(data)),mês = month(data)) %>% 
+  filter(year(data) > 2016) %>% 
+  summarise(n = n()) %>% 
+  ggplot(aes(x = mês, y = n, color = ano)) + geom_line() + facet_wrap(~ ano) + 
+  theme(legend.position = "bottom", legend.direction = "horizontal") + 
+  scale_x_continuous(breaks =  c(1:12)) + ylab("Quantidade de procedimentos") +
+  ggtitle("Quantidade de procedimentos registrados por mês")
+
+
+
+
+```
+
+<br>
+```{r , include = TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+respostas %>%
+  group_by(ano = year(data), dia = dia_semana) %>% 
+  summarise(n = n()) %>% 
+  ggplot(aes(x = dia, y = n, fill = dia))  + geom_boxplot(alpha = 0.3) + 
+  ggtitle("Boxplot da quantidade de procedimentos por dia da semana, por ano") +
+  xlab("Dias da semana") + ylab("Quantidade de procedimentos")
+
+```
+
+
+<br>
+```{r , include = TRUE, echo=FALSE, message=FALSE, warning=FALSE, fig.width = 6.5, fig.height=7}
+respostas %>%
+  group_by(nick, preceptor) %>% 
+  summarise(n = n()) %>% 
+  ggplot(aes(x = fct_reorder(nick, n, sum), y = n, fill = preceptor)) + geom_col() +
+  theme(axis.text.x = element_text(angle = 0, hjust = 0.5)) + 
+  ggtitle("Quantidade de procedimentos e presença de preceptor por residente.") +
+  ylab("Quantidadede de procedimentos") + xlab("Residente") + coord_flip() + theme(legend.position = "bottom")
+
+```
+<br>
+
+```{r , include = FALSE, echo=FALSE, message=FALSE, warning=FALSE}
+respostas %>% 
+  group_by(r, antigo) %>% 
+  summarise(n = n()) %>% 
+  ggplot(aes(x = r, y = n, fill = antigo)) + geom_col() + coord_flip() + 
+  ggtitle("Quantidade de procedimentos por ano de residência") + theme(legend.position = "bottom") +
+  labs(fill="Formulário antigo: ") + xlab("Ano de Residência") + ylab("Quantidade de Procedimentos")
+```
+
+<br>
+```{r , include = TRUE, echo=FALSE, message=FALSE, warning=FALSE, fig.fullwidth = TRUE}
+# R1
+respostas %>%
+  filter(r == 1) %>% 
+  group_by(nick, sucesso) %>% 
+  summarise(n = n()) %>% 
+  ggplot(aes(x = fct_reorder(nick,n, .fun = sum), y = n, fill =  sucesso)) + geom_col() + coord_flip() + theme(legend.position = "bottom") +
+  ggtitle("Número de procedimentos (R1) e sucesso da tentativa") + xlab("Residente") + ylab("Quantidade de procedimentos") + guides(fill=guide_legend(ncol=2))
+
+# R2
+respostas %>%
+  filter(r == 2) %>% 
+  group_by(nick, sucesso) %>% 
+  summarise(n = n()) %>% 
+  ggplot(aes(x = fct_reorder(nick, n, sum), y = n, fill = sucesso)) + geom_col() + coord_flip() + theme(legend.position = "bottom") +
+  ggtitle("Número de procedimentos (R2) e sucesso da tentativa") + xlab("Residente") + ylab("Quantidade de procedimentos") + guides(fill=guide_legend(ncol=2))
+
+# R3
+respostas %>%
+  filter(r == 3) %>% 
+  group_by(nick, sucesso) %>% 
+  summarise(n = n()) %>% 
+  ggplot(aes(x = fct_reorder(nick, n, sum), y = n, fill = sucesso)) + geom_col() + coord_flip()+ theme(legend.position = "bottom") +
+  ggtitle("Número de procedimentos (R3) e sucesso da tentativa") + xlab("Residente") + ylab("Quantidade de procedimentos") + 
+  guides(fill=guide_legend(ncol=2))
+
+
+```
+
+
+<br>
+```{r , include = TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+
+respostas %>% 
+  filter(str_detect(procedimento, "[eEiI]ntubação")) %>% 
+  filter(r >= 1) %>% 
+  group_by(nick, r = as.factor(r)) %>% 
+  summarise(n = n()) %>% 
+  arrange(desc(n)) %>% 
+  ggplot(aes(x = fct_reorder(nick,n,sum), y = n, fill = r)) + geom_col() + coord_flip() + 
+  theme(legend.position = "bottom", legend.direction = "horizontal") + 
+  ylab("Quantidade de intubações") +
+  ggtitle("Quantidade de intubações por residente e ano da residência") + 
+  xlab("Residente") 
+
+
+
+
+```
+
+
+
+
+<br>
+
+
+<br>
+
+```{r , include = TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+
+respostas %>% 
+  filter(str_detect(procedimento, "^Dren")) %>% 
+  filter(r >= 1) %>% 
+  group_by(nick, r = as.factor(r)) %>% 
+  summarise(n = n()) %>% 
+  arrange(desc(n)) %>% 
+  ggplot(aes(x = fct_reorder(nick,n,sum), y = n, fill = r)) + geom_col() + coord_flip() + 
+  theme(legend.position = "bottom", legend.direction = "horizontal") + 
+  ylab("Quantidade de Drenagens de Tórax") +
+  ggtitle("Quantidade de drenagens de tórax por residente e ano da residência") + 
+  xlab("Residente") 
+
+
+
+
+```
+<br>
+<br>
+
+```{r , include = TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+
+respostas %>% 
+  filter(str_detect(procedimento, "[C|c]entral")) %>% 
+  filter(r >= 1) %>% 
+  group_by(nick, r = as.factor(r)) %>% 
+  summarise(n = n()) %>% 
+  arrange(desc(n)) %>% 
+  ggplot(aes(x = fct_reorder(nick,n,sum), y = n, fill = r)) + geom_col() + coord_flip() + 
+  theme(legend.position = "bottom", legend.direction = "horizontal") + 
+  ylab("Quantidade de acessos centrais") +
+  ggtitle("Quantidade de acessos centrais por residente e ano da residência") + 
+  xlab("Residente") 
+
+
+
+
+```
+<br>
+
+
+<br>
+
+### Procedimentos de `r nome`
+* Quantidade de procedimentos: `r nrow(df_nome)`
+* Total de procedimentos de todos os residentes: `r nrow(df_ativos)`
+* Você realizou `r format(nrow(df_nome) / nrow(df_ativos) * 100, digits = 2)`% do total de procedimentos da residência.
+* Média de `r format(nrow(df_nome) / dias_na_residencia, digits = 2)` procedimentos / dia
+
+
+
+```{r , include = TRUE, echo=FALSE, message=FALSE, warning=FALSE, fig.fullwidth = TRUE}
+if(nrow(df_nome) > 0) {
+  df_nome %>% 
+  group_by(Estágio = estagio, Procedimento = procedimento) %>% 
+  summarise(n = n()) %>% 
+  ggplot(aes(x = fct_reorder(Procedimento,n, sum), y = n, fill = Estágio)) + geom_col() + coord_flip() + 
+  ggtitle(paste("Procedimentos de ", nome, "por tipo e estágio")) + theme(legend.position = "bottom") +
+  labs(fill = "Estágio: ", y = "Quantidade de procedimentos") + guides(fill=guide_legend(ncol=2)) + xlab("Tipo de Procedimento")
+}
+```
+
+```{r , include = TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+if(nrow(df_nome) > 0) {
+  df_nome %>% 
+    group_by(Procedimento = procedimento, residente) %>% 
+    summarise(n = n()) %>% 
+    mutate(etiqueta = paste(Procedimento, "\n",n, " proc.")) %>% 
+    treemap(index = "etiqueta", vSize = "n",title = paste("Procedimentos de ",nome))
+}
+```
+
+
+```{r , include = TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+
+if(nrow(df_nome) > 0) {
+  df_nome %>% 
+  group_by(Estágio = estagio, Sucesso = sucesso) %>% 
+  summarise(n = n()) %>% 
+  arrange(desc(n)) %>% 
+  ggplot(aes(x = fct_reorder(Estágio,n,sum), y = n, fill = Sucesso)) + geom_col() + coord_flip() + theme(legend.position = "bottom") +
+  ggtitle(paste("Procedimentos de ",nome, " por estágio"), subtitle = "NA - Registros da versão antiga") +
+  guides(fill=guide_legend(ncol=2)) + ylab("Quantidade de Procedimentos") + xlab("Estágio")
+}
+```
+
+
+
+```{r , include = FALSE, echo=FALSE, message=FALSE, warning=FALSE}
+
+todas_respostas %>% 
+  filter(grepl("[P|p]arada", procedimento))
+```
+
+
+
+
+

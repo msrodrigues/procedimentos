@@ -1,0 +1,51 @@
+---
+title: "03 - Multiplos Reports"
+author: "Márcio Rodrigues"
+date: "1/8/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE, echo=FALSE, message=FALSE, warning=FALSE}
+library(knitr)
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r Bibliotecas, include= FALSE, echo=FALSE, message=FALSE, warning=FALSE}
+
+
+library(RColorBrewer)
+library(extrafont)
+library(scales)
+library(chron)
+library(treemap)
+library(ggthemes)
+library(ggmap)
+library(knitr)
+library(readr)
+library(readxl)
+library(xtable)
+library(kableExtra)
+library(rebus)
+library(tibble)
+library(cronR)
+library(lubridate)
+library(tidyverse)
+
+setwd("~/Dropbox/Coding/R/")
+
+Sys.setenv(TZ="Brazil/East")
+options(tz="Brazil/East")
+Sys.getenv("TZ")
+Sys.setlocale("LC_TIME", "pt_BR")
+```
+
+```{r Carregamento das funções , include = FALSE, echo=FALSE, message=FALSE, warning=FALSE}
+source("~/Dropbox/Coding/R/funs/msrfun.R")
+
+
+residente <- respostas[Residente == res]
+
+
+```
+
+
